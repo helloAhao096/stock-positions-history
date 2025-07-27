@@ -1,0 +1,61 @@
+# Python bytecode 和缓存
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.so
+
+# 虚拟环境（如果你启用了 uv 的隔离环境）
+.venv/
+.uv/
+
+# uv 的缓存
+.uv-cache/
+.uv-installs/
+.uv-shim/
+
+# pip 缓存
+pip-wheel-metadata/
+
+# 构建产物
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+
+# 环境变量配置（如果你使用了 dotenv）
+.env
+.env.*
+
+# 单元测试相关
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# 编辑器和 IDE 缓存
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# 日志或本地数据
+*.log
+*.sqlite3
+*.db
+
+# Jupyter Notebook 检查点
+.ipynb_checkpoints/
+
+# mypy 静态类型检查缓存
+.mypy_cache/
+
+# profiling 和 py-spy
+profile.svg
+py-spy-profile.*
