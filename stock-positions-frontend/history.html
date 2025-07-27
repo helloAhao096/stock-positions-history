@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>历史持仓数据 - 股票持仓管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .profit-positive { color: #28a745; font-weight: bold; }
+        .profit-negative { color: #dc3545; font-weight: bold; }
+        .profit-zero { color: #6c757d; }
+        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .date-item { cursor: pointer; transition: all 0.3s ease; }
+        .date-item:hover { background-color: #f8f9fa; transform: translateX(5px); }
+        .date-item.active { background-color: #e3f2fd; border-left: 4px solid #2196f3; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12 mb-3">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="index.html" class="text-decoration-none">首页</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">历史数据</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-calendar3"></i> 历史日期
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush" id="dateList">
+                            <div class="list-group-item text-center text-muted py-4" id="dateListLoading">
+                                <i class="bi bi-hourglass-split"></i>
+                                <p class="mt-2">加载中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <div class="card shadow">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-clock-history"></i> 历史持仓详情
+                        </h5>
+                        <div>
+                            <span class="badge bg-secondary" id="selectedDate">请选择日期</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3" id="historyInfo" style="display: none;">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="bi bi-clock"></i> 记录时间: <span id="historyTime">--</span>
+                                </small>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <small class="text-muted">
+                                    持仓数量: <span id="historyPositionCount">--</span> 只股票
+                                </small>
+                            </div>
+                        </div>
+                        <div id="historyAccountSummary" class="mb-3"></div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="sortable-header" data-sort="证券代码">股票代码</th>
+                                        <th class="sortable-header" data-sort="证券名称">股票名称</th>
+                                        <th class="sortable-header" data-sort="成本价">成本价</th>
+                                        <th class="sortable-header" data-sort="市价">当前价</th>
+                                        <th class="sortable-header" data-sort="盈亏比(%)">盈亏比例</th>
+                                        <th class="sortable-header" data-sort="当日盈亏比(%)">当日盈亏比</th>
+                                        <th class="sortable-header" data-sort="持股天数">持股天数</th>
+                                        <th class="sortable-header" data-sort="仓位占比(%)">仓位占比</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTable">
+                                    <tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+const API_URL = 'https://api.github.com/repos/helloAhao096/stock-positions-history/contents/stock-positions-history';
+let allFiles = [];
+let historyPositionsData = [];
+let currentSortField = null;
+let currentSortDirection = 'asc';
+
+async function getFileList() {
+    const resp = await fetch(API_URL);
+    if (!resp.ok) throw new Error('无法获取文件列表');
+    return await resp.json();
+}
+
+function getSortedJsonFiles(files) {
+    const jsonFiles = files.filter(f => f.type === 'file' && f.name.endsWith('.json'));
+    jsonFiles.sort((a, b) => b.name.localeCompare(a.name));
+    return jsonFiles;
+}
+
+async function fetchAndRenderDates() {
+    setDateListLoading();
+    try {
+        allFiles = await getFileList();
+    } catch (e) {
+        showDateListError('无法获取文件列表');
+        return;
+    }
+    const jsonFiles = getSortedJsonFiles(allFiles);
+    if (jsonFiles.length === 0) {
+        showDateListError('没有可用数据文件');
+        return;
+    }
+    renderDateList(jsonFiles);
+    // 默认选中最新日期
+    loadHistoryData(jsonFiles[0].name.replace('.json',''));
+}
+
+function setDateListLoading() {
+    document.getElementById('dateList').innerHTML = '<div class="list-group-item text-center text-muted py-4" id="dateListLoading"><i class="bi bi-hourglass-split"></i><p class="mt-2">加载中...</p></div>';
+}
+
+function showDateListError(msg) {
+    document.getElementById('dateList').innerHTML = `<div class="list-group-item text-center text-danger py-4">${msg}</div>`;
+}
+
+function renderDateList(jsonFiles) {
+    const dateList = document.getElementById('dateList');
+    dateList.innerHTML = jsonFiles.map(f => `
+        <div class="list-group-item date-item" data-date="${f.name.replace('.json','')}">
+            <div class="d-flex justify-content-between align-items-center">
+                <span>${f.name.replace('.json','')}</span>
+                <i class="bi bi-chevron-right"></i>
+            </div>
+        </div>
+    `).join('');
+    // 绑定点击事件
+    document.querySelectorAll('.date-item').forEach(item => {
+        item.addEventListener('click', function() {
+            document.querySelectorAll('.date-item').forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+            const date = this.getAttribute('data-date');
+            loadHistoryData(date);
+        });
+    });
+}
+
+async function loadHistoryData(date) {
+    setHistoryLoading();
+    document.getElementById('selectedDate').textContent = date;
+    const file = allFiles.find(f => f.name === date + '.json');
+    if (!file) {
+        showHistoryError('未找到该日期的数据文件');
+        return;
+    }
+    try {
+        const resp = await fetch(file.download_url);
+        if (!resp.ok) throw new Error('数据加载失败');
+        const data = await resp.json();
+        historyPositionsData = data.positions || [];
+        renderHistoryData(data);
+        bindSortEvents();
+    } catch (e) {
+        showHistoryError('数据加载失败');
+    }
+}
+
+function setHistoryLoading() {
+    document.getElementById('historyTime').textContent = '--';
+    document.getElementById('historyPositionCount').textContent = '--';
+    document.getElementById('historyTable').innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>';
+    document.getElementById('historyAccountSummary').innerHTML = '';
+    document.getElementById('historyInfo').style.display = 'none';
+}
+
+function showHistoryError(msg) {
+    document.getElementById('historyTime').textContent = '--';
+    document.getElementById('historyPositionCount').textContent = '--';
+    document.getElementById('historyTable').innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${msg}</td></tr>`;
+    document.getElementById('historyAccountSummary').innerHTML = '';
+    document.getElementById('historyInfo').style.display = 'none';
+}
+
+function renderHistoryData(data) {
+    document.getElementById('historyTime').textContent = data.timestamp ? new Date(data.timestamp).toLocaleString('zh-CN') : '--';
+    document.getElementById('historyPositionCount').textContent = data.position_count || 0;
+    document.getElementById('historyInfo').style.display = '';
+    renderHistoryAccountSummary(data.account_summary || {});
+    renderHistoryTable(historyPositionsData);
+}
+
+function renderHistoryTable(positions) {
+    const tbody = document.getElementById('historyTable');
+    if (!positions || positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无持仓数据</td></tr>';
+        return;
+    }
+    tbody.innerHTML = positions.map(pos => {
+        const profitRatioClass = pos['盈亏比(%)'] > 0 ? 'profit-positive' : pos['盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
+        const todayProfitClass = pos['当日盈亏比(%)'] > 0 ? 'profit-positive' : pos['当日盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
+        return `
+            <tr>
+                <td><strong>${pos['证券代码'] || ''}</strong></td>
+                <td>${pos['证券名称'] || ''}</td>
+                <td>¥${pos['成本价'] ?? ''}</td>
+                <td>¥${pos['市价'] ?? ''}</td>
+                <td class="${profitRatioClass}">${pos['盈亏比(%)'] ?? ''}%</td>
+                <td class="${todayProfitClass}">${pos['当日盈亏比(%)'] ?? ''}%</td>
+                <td>${pos['持股天数'] ?? ''}天</td>
+                <td>${pos['仓位占比(%)'] ?? ''}%</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderHistoryAccountSummary(summary) {
+    const el = document.getElementById('historyAccountSummary');
+    if (!summary || Object.keys(summary).length === 0) {
+        el.innerHTML = '';
+        return;
+    }
+    el.innerHTML = `
+        <div class="alert alert-info p-2 mb-2">
+            <strong>账户资金信息：</strong>
+            ${Object.entries(summary).map(([k, v]) => `<span class="me-3">${k}: <b>${v}</b></span>`).join('')}
+        </div>
+    `;
+}
+
+function bindSortEvents() {
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.onclick = function() {
+            const field = this.getAttribute('data-sort');
+            if (!field) return;
+            if (currentSortField === field) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortDirection = 'asc';
+            }
+            document.querySelectorAll('.sortable-header').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+            this.classList.add('sort-' + currentSortDirection);
+            sortHistoryTable(field, currentSortDirection);
+        };
+    });
+}
+
+function sortHistoryTable(field, direction) {
+    historyPositionsData.sort((a, b) => {
+        let aVal = parseFloat(a[field]) || 0;
+        let bVal = parseFloat(b[field]) || 0;
+        if (direction === 'asc') {
+            return aVal - bVal;
+        } else {
+            return bVal - aVal;
+        }
+    });
+    renderHistoryTable(historyPositionsData);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetchAndRenderDates();
+});
+</script>
+</body>
+</html> 

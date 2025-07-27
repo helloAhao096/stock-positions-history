@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票持仓管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .profit-positive { color: #dc3545; font-weight: bold; }
+        .profit-negative { color: #28a745; font-weight: bold; }
+        .profit-zero { color: #6c757d; }
+        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .table-responsive { border-radius: 0.375rem; }
+        .btn-refresh { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
+        .btn-refresh:hover { background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%); }
+        .sortable-header { cursor: pointer; user-select: none; position: relative; }
+        .sortable-header:hover { background-color: rgba(54, 54, 54, 0.8) !important; }
+        .sortable-header::after { content: '↕'; position: absolute; right: 8px; color: #bbb; font-size: 12px; }
+        .sortable-header.sort-asc::after { content: '↑'; color: #333; }
+        .sortable-header.sort-desc::after { content: '↓'; color: #333; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">
+                            <i class="bi bi-graph-up"></i> 股票持仓实时监控
+                        </h3>
+                        <div>
+                            <button class="btn btn-light btn-sm me-2" onclick="fetchLatestPositionData()">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新数据
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="bi bi-clock"></i> 最后更新时间: <span id="updateTime">加载中...</span>
+                                </small>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <small class="text-muted">
+                                    持仓数量: <span id="positionCount">加载中...</span> 只股票
+                                </small>
+                            </div>
+                        </div>
+                        <div id="accountSummary" class="mb-3"></div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>股票代码</th>
+                                        <th>股票名称</th>
+                                        <th class="sortable-header" data-sort="成本价">成本价</th>
+                                        <th class="sortable-header" data-sort="市价">当前价</th>
+                                        <th class="sortable-header" data-sort="盈亏比(%)">盈亏比例</th>
+                                        <th class="sortable-header" data-sort="当日盈亏比(%)">当日盈亏比</th>
+                                        <th class="sortable-header" data-sort="持股天数">持股天数</th>
+                                        <th class="sortable-header" data-sort="仓位占比(%)">仓位占比</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="positionsTable">
+                                    <tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+const API_URL = 'https://api.github.com/repos/helloAhao096/stock-positions-history/contents/stock-positions-history';
+let positionsData = [];
+let currentSortField = null;
+let currentSortDirection = 'asc';
+
+async function getFileList() {
+    const resp = await fetch(API_URL);
+    if (!resp.ok) throw new Error('无法获取文件列表');
+    return await resp.json();
+}
+
+function getLatestFile(files) {
+    const jsonFiles = files.filter(f => f.type === 'file' && f.name.endsWith('.json'));
+    jsonFiles.sort((a, b) => b.name.localeCompare(a.name));
+    return jsonFiles[0];
+}
+
+async function fetchLatestPositionData() {
+    setLoadingState();
+    let files = [];
+    try {
+        files = await getFileList();
+    } catch (e) {
+        showError('无法获取文件列表');
+        return;
+    }
+    const latestFile = getLatestFile(files);
+    if (!latestFile) {
+        showError('没有可用数据文件');
+        return;
+    }
+    try {
+        const resp = await fetch(latestFile.download_url);
+        if (!resp.ok) throw new Error('数据加载失败');
+        const data = await resp.json();
+        positionsData = data.positions || [];
+        renderData(data, latestFile.name.replace('.json',''), files.map(f=>f.name.replace('.json','')));
+    } catch (e) {
+        showError('数据加载失败');
+    }
+}
+
+function setLoadingState() {
+    document.getElementById('updateTime').textContent = '加载中...';
+    document.getElementById('positionCount').textContent = '加载中...';
+    document.getElementById('positionsTable').innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>';
+    document.getElementById('accountSummary').innerHTML = '';
+}
+
+function showError(msg) {
+    document.getElementById('updateTime').textContent = '--';
+    document.getElementById('positionCount').textContent = '--';
+    document.getElementById('positionsTable').innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${msg}</td></tr>`;
+    document.getElementById('accountSummary').innerHTML = '';
+}
+
+function renderData(data, date, allDates) {
+    document.getElementById('updateTime').textContent = data.timestamp ? new Date(data.timestamp).toLocaleString('zh-CN') : '--';
+    document.getElementById('positionCount').textContent = data.position_count || 0;
+    renderAccountSummary(data.account_summary || {});
+    renderTable(positionsData);
+    bindSortEvents();
+}
+
+function renderTable(positions) {
+    const tbody = document.getElementById('positionsTable');
+    if (!positions || positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无持仓数据</td></tr>';
+        return;
+    }
+    tbody.innerHTML = positions.map(pos => {
+        const profitRatioClass = pos['盈亏比(%)'] > 0 ? 'profit-positive' : pos['盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
+        const todayProfitClass = pos['当日盈亏比(%)'] > 0 ? 'profit-positive' : pos['当日盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
+        return `
+            <tr>
+                <td><strong>${pos['证券代码'] || ''}</strong></td>
+                <td>${pos['证券名称'] || ''}</td>
+                <td>¥${pos['成本价'] ?? ''}</td>
+                <td>¥${pos['市价'] ?? ''}</td>
+                <td class="${profitRatioClass}">${pos['盈亏比(%)'] ?? ''}%</td>
+                <td class="${todayProfitClass}">${pos['当日盈亏比(%)'] ?? ''}%</td>
+                <td>${pos['持股天数'] ?? ''}天</td>
+                <td>${pos['仓位占比(%)'] ?? ''}%</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderAccountSummary(summary) {
+    const el = document.getElementById('accountSummary');
+    if (!summary || Object.keys(summary).length === 0) {
+        el.innerHTML = '';
+        return;
+    }
+    el.innerHTML = `
+        <div class="alert alert-info p-2 mb-2">
+            <strong>账户资金信息：</strong>
+            ${Object.entries(summary).map(([k, v]) => `<span class="me-3">${k}: <b>${v}</b></span>`).join('')}
+        </div>
+    `;
+}
+
+function bindSortEvents() {
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.onclick = function() {
+            const field = this.getAttribute('data-sort');
+            if (!field) return;
+            if (currentSortField === field) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortDirection = 'asc';
+            }
+            document.querySelectorAll('.sortable-header').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+            this.classList.add('sort-' + currentSortDirection);
+            sortTable(field, currentSortDirection);
+        };
+    });
+}
+
+function sortTable(field, direction) {
+    positionsData.sort((a, b) => {
+        let aVal = parseFloat(a[field]) || 0;
+        let bVal = parseFloat(b[field]) || 0;
+        if (direction === 'asc') {
+            return aVal - bVal;
+        } else {
+            return bVal - aVal;
+        }
+    });
+    renderTable(positionsData);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetchLatestPositionData();
+});
+    </script>
+</body>
+</html> 
