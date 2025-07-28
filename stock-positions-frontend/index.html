@@ -4,83 +4,269 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>股票持仓管理系统</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         .profit-positive { color: #dc3545; font-weight: bold; }
         .profit-negative { color: #28a745; font-weight: bold; }
         .profit-zero { color: #6c757d; }
-        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .table-responsive { border-radius: 0.375rem; }
-        .btn-refresh { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
-        .btn-refresh:hover { background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%); }
         .sortable-header { cursor: pointer; user-select: none; position: relative; }
-        .sortable-header:hover { background-color: rgba(54, 54, 54, 0.8) !important; }
-        .sortable-header::after { content: '↕'; position: absolute; right: 8px; color: #bbb; font-size: 12px; }
-        .sortable-header.sort-asc::after { content: '↑'; color: #333; }
-        .sortable-header.sort-desc::after { content: '↓'; color: #333; }
+        .sortable-header:hover { background-color: rgba(55, 65, 81, 0.8) !important; }
+        .sortable-header::after { content: '↕'; position: absolute; right: 8px; color: #9ca3af; font-size: 12px; }
+        .sortable-header.sort-asc::after { content: '↑'; color: #374151; }
+        .sortable-header.sort-desc::after { content: '↓'; color: #374151; }
+        
+        /* 移动设备优化 */
+        @media (max-width: 768px) {
+            .table-responsive {
+                font-size: 0.875rem;
+            }
+            
+            .table th, .table td {
+                padding: 0.5rem 0.25rem;
+                vertical-align: middle;
+            }
+            
+            .table th {
+                font-size: 0.75rem;
+                white-space: nowrap;
+            }
+            
+            .table td {
+                font-size: 0.8rem;
+            }
+            
+            /* 移动端卡片式布局 */
+            .mobile-card {
+                display: none;
+            }
+            
+            .mobile-card.active {
+                display: block;
+            }
+            
+            .mobile-stock-card {
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                padding: 1rem;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            .mobile-stock-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 0.75rem;
+                padding-bottom: 0.5rem;
+                border-bottom: 1px solid #f3f4f6;
+            }
+            
+            .mobile-stock-code {
+                font-weight: bold;
+                font-size: 1.1rem;
+                color: #374151;
+            }
+            
+            .mobile-stock-name {
+                color: #6b7280;
+                font-size: 0.9rem;
+            }
+            
+            .mobile-stock-details {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+                font-size: 0.85rem;
+            }
+            
+            .mobile-detail-item {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.25rem 0;
+            }
+            
+            .mobile-detail-label {
+                color: #6b7280;
+                font-weight: 500;
+            }
+            
+            .mobile-detail-value {
+                font-weight: bold;
+            }
+            
+            /* 账户资金信息移动端优化 */
+            .mobile-account-summary {
+                background: #f9fafb;
+                border-radius: 8px;
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .mobile-account-title {
+                font-weight: bold;
+                color: #374151;
+                margin-bottom: 0.75rem;
+                font-size: 1rem;
+            }
+            
+            .mobile-account-items {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.75rem;
+            }
+            
+            .mobile-account-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem;
+                background: white;
+                border-radius: 6px;
+                border: 1px solid #e5e7eb;
+            }
+            
+            .mobile-account-label {
+                font-size: 0.85rem;
+                color: #6b7280;
+            }
+            
+            .mobile-account-value {
+                font-weight: bold;
+                color: #374151;
+                font-size: 0.9rem;
+            }
+            
+            .mobile-position-ratio {
+                grid-column: 1 / -1;
+                background: #dbeafe;
+                border-color: #3b82f6;
+            }
+            
+            /* 切换按钮 */
+            .view-toggle {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 1rem;
+            }
+            
+            .view-toggle .btn {
+                border-radius: 20px;
+                margin: 0 0.25rem;
+                font-size: 0.875rem;
+                padding: 0.375rem 1rem;
+            }
+            
+            .view-toggle .btn.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-color: transparent;
+            }
+        }
+        
+        /* 桌面端隐藏移动端元素 */
+        @media (min-width: 769px) {
+            .mobile-card, .view-toggle {
+                display: none !important;
+            }
+        }
     </style>
 </head>
-<body class="bg-light">
-    <div class="container-fluid py-4">
-        <div class="row">
-            <div class="col-12">
-                <div class="card shadow">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3 class="mb-0">
-                            <i class="bi bi-graph-up"></i> 股票持仓实时监控
-                        </h3>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-6">
+        <div class="w-full">
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-semibold m-0">
+                        <i class="bi bi-graph-up"></i> 股票持仓实时监控
+                    </h3>
+                    <div>
+                        <button class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-1 rounded text-sm transition-colors" onclick="fetchLatestPositionData()">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新数据
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                            <button class="btn btn-light btn-sm me-2" onclick="fetchLatestPositionData()">
-                                <i class="bi bi-arrow-clockwise"></i> 刷新数据
-                            </button>
+                            <small class="text-gray-500">
+                                <i class="bi bi-clock"></i> 最后更新时间（收盘后更新）: <span id="updateTime" class="text-gray-700">加载中...</span>
+                            </small>
+                        </div>
+                        <div class="text-right">
+                            <small class="text-gray-500">
+                                持仓数量: <span id="positionCount" class="text-gray-700">加载中...</span> 只股票
+                            </small>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <small class="text-muted">
-                                    <i class="bi bi-clock"></i> 最后更新时间: <span id="updateTime">加载中...</span>
-                                </small>
-                            </div>
-                            <div class="col-md-6 text-end">
-                                <small class="text-muted">
-                                    持仓数量: <span id="positionCount">加载中...</span> 只股票
-                                </small>
-                            </div>
-                        </div>
-                        <div id="accountSummary" class="mb-3"></div>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>股票代码</th>
-                                        <th>股票名称</th>
-                                        <th class="sortable-header" data-sort="成本价">成本价</th>
-                                        <th class="sortable-header" data-sort="市价">当前价</th>
-                                        <th class="sortable-header" data-sort="盈亏比(%)">盈亏比例</th>
-                                        <th class="sortable-header" data-sort="当日盈亏比(%)">当日盈亏比</th>
-                                        <th class="sortable-header" data-sort="持股天数">持股天数</th>
-                                        <th class="sortable-header" data-sort="仓位占比(%)">仓位占比</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="positionsTable">
-                                    <tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    
+                    <!-- 移动端视图切换 -->
+                    <div class="view-toggle md:hidden">
+                        <button class="btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-sm mx-1 active" onclick="switchView('table')">
+                            <i class="bi bi-table"></i> 表格视图
+                        </button>
+                        <button class="btn bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-full text-sm mx-1" onclick="switchView('card')">
+                            <i class="bi bi-card-list"></i> 卡片视图
+                        </button>
                     </div>
+                    
+                    <div id="accountSummary" class="mb-4"></div>
+                    
+                    <!-- 桌面端表格 -->
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="w-full table-auto">
+                            <thead class="bg-gray-800 text-white">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">股票代码</th>
+                                    <th class="px-4 py-3 text-left">股票名称</th>
+                                    <th class="sortable-header px-4 py-3 text-left" data-sort="成本价">成本价</th>
+                                    <th class="sortable-header px-4 py-3 text-left" data-sort="市价">当前价</th>
+                                    <th class="sortable-header px-4 py-3 text-left" data-sort="盈亏比(%)">盈亏比例</th>
+                                    <th class="sortable-header px-4 py-3 text-left" data-sort="当日盈亏比(%)">当日盈亏比</th>
+                                    <th class="sortable-header px-4 py-3 text-left" data-sort="持股天数">持股天数</th>
+                                    <th class="sortable-header px-4 py-3 text-left" data-sort="仓位占比(%)">仓位占比</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positionsTable" class="bg-white">
+                                <tr><td colspan="8" class="text-center text-gray-500 py-8">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 移动端表格 -->
+                    <div class="md:hidden overflow-x-auto" id="mobileTable">
+                        <table class="w-full table-auto">
+                            <thead class="bg-gray-800 text-white">
+                                <tr>
+                                    <th class="px-2 py-2 text-left text-xs">代码</th>
+                                    <th class="px-2 py-2 text-left text-xs">名称</th>
+                                    <th class="sortable-header px-2 py-2 text-left text-xs" data-sort="成本价">成本</th>
+                                    <th class="sortable-header px-2 py-2 text-left text-xs" data-sort="市价">现价</th>
+                                    <th class="sortable-header px-2 py-2 text-left text-xs" data-sort="盈亏比(%)">盈亏%</th>
+                                    <th class="sortable-header px-2 py-2 text-left text-xs" data-sort="当日盈亏比(%)">当日%</th>
+                                    <th class="sortable-header px-2 py-2 text-left text-xs" data-sort="持股天数">天数</th>
+                                    <th class="sortable-header px-2 py-2 text-left text-xs" data-sort="仓位占比(%)">仓位%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mobilePositionsTable" class="bg-white">
+                                <tr><td colspan="8" class="text-center text-gray-500 py-8">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 移动端卡片视图 -->
+                    <div id="mobileCardView" class="mobile-card"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
 const API_URL = 'https://api.github.com/repos/helloAhao096/stock-positions-history/contents/stock-positions-history';
 let positionsData = [];
 let currentSortField = null;
 let currentSortDirection = 'asc';
+let currentView = 'table';
 
 async function getFileList() {
     const resp = await fetch(API_URL);
@@ -122,14 +308,18 @@ async function fetchLatestPositionData() {
 function setLoadingState() {
     document.getElementById('updateTime').textContent = '加载中...';
     document.getElementById('positionCount').textContent = '加载中...';
-    document.getElementById('positionsTable').innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>';
+    document.getElementById('positionsTable').innerHTML = '<tr><td colspan="8" class="text-center text-gray-500 py-8">加载中...</td></tr>';
+    document.getElementById('mobilePositionsTable').innerHTML = '<tr><td colspan="8" class="text-center text-gray-500 py-8">加载中...</td></tr>';
+    document.getElementById('mobileCardView').innerHTML = '<div class="text-center text-gray-500 py-8">加载中...</div>';
     document.getElementById('accountSummary').innerHTML = '';
 }
 
 function showError(msg) {
     document.getElementById('updateTime').textContent = '--';
     document.getElementById('positionCount').textContent = '--';
-    document.getElementById('positionsTable').innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${msg}</td></tr>`;
+    document.getElementById('positionsTable').innerHTML = `<tr><td colspan="8" class="text-center text-red-500 py-8">${msg}</td></tr>`;
+    document.getElementById('mobilePositionsTable').innerHTML = `<tr><td colspan="8" class="text-center text-red-500 py-8">${msg}</td></tr>`;
+    document.getElementById('mobileCardView').innerHTML = `<div class="text-center text-red-500 py-8">${msg}</div>`;
     document.getElementById('accountSummary').innerHTML = '';
 }
 
@@ -138,29 +328,103 @@ function renderData(data, date, allDates) {
     document.getElementById('positionCount').textContent = data.position_count || 0;
     renderAccountSummary(data.account_summary || {});
     renderTable(positionsData);
+    renderMobileTable(positionsData);
+    renderMobileCards(positionsData);
     bindSortEvents();
 }
 
 function renderTable(positions) {
     const tbody = document.getElementById('positionsTable');
     if (!positions || positions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无持仓数据</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-500 py-8">暂无持仓数据</td></tr>';
         return;
     }
     tbody.innerHTML = positions.map(pos => {
         const profitRatioClass = pos['盈亏比(%)'] > 0 ? 'profit-positive' : pos['盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
         const todayProfitClass = pos['当日盈亏比(%)'] > 0 ? 'profit-positive' : pos['当日盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
         return `
-            <tr>
-                <td><strong>${pos['证券代码'] || ''}</strong></td>
-                <td>${pos['证券名称'] || ''}</td>
-                <td>¥${pos['成本价'] ?? ''}</td>
-                <td>¥${pos['市价'] ?? ''}</td>
-                <td class="${profitRatioClass}">${pos['盈亏比(%)'] ?? ''}%</td>
-                <td class="${todayProfitClass}">${pos['当日盈亏比(%)'] ?? ''}%</td>
-                <td>${pos['持股天数'] ?? ''}天</td>
-                <td>${pos['仓位占比(%)'] ?? ''}%</td>
+            <tr class="hover:bg-gray-50 border-b">
+                <td class="px-4 py-3"><strong>${pos['证券代码'] || ''}</strong></td>
+                <td class="px-4 py-3">${pos['证券名称'] || ''}</td>
+                <td class="px-4 py-3">¥${pos['成本价'] ?? ''}</td>
+                <td class="px-4 py-3">¥${pos['市价'] ?? ''}</td>
+                <td class="px-4 py-3 ${profitRatioClass}">${pos['盈亏比(%)'] ?? ''}%</td>
+                <td class="px-4 py-3 ${todayProfitClass}">${pos['当日盈亏比(%)'] ?? ''}%</td>
+                <td class="px-4 py-3">${pos['持股天数'] ?? ''}天</td>
+                <td class="px-4 py-3">${pos['仓位占比(%)'] ?? ''}%</td>
             </tr>
+        `;
+    }).join('');
+}
+
+function renderMobileTable(positions) {
+    const tbody = document.getElementById('mobilePositionsTable');
+    if (!positions || positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-500 py-8">暂无持仓数据</td></tr>';
+        return;
+    }
+    tbody.innerHTML = positions.map(pos => {
+        const profitRatioClass = pos['盈亏比(%)'] > 0 ? 'profit-positive' : pos['盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
+        const todayProfitClass = pos['当日盈亏比(%)'] > 0 ? 'profit-positive' : pos['当日盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
+        return `
+            <tr class="hover:bg-gray-50 border-b">
+                <td class="px-2 py-2"><strong>${pos['证券代码'] || ''}</strong></td>
+                <td class="px-2 py-2">${pos['证券名称'] || ''}</td>
+                <td class="px-2 py-2">¥${pos['成本价'] ?? ''}</td>
+                <td class="px-2 py-2">¥${pos['市价'] ?? ''}</td>
+                <td class="px-2 py-2 ${profitRatioClass}">${pos['盈亏比(%)'] ?? ''}%</td>
+                <td class="px-2 py-2 ${todayProfitClass}">${pos['当日盈亏比(%)'] ?? ''}%</td>
+                <td class="px-2 py-2">${pos['持股天数'] ?? ''}天</td>
+                <td class="px-2 py-2">${pos['仓位占比(%)'] ?? ''}%</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderMobileCards(positions) {
+    const container = document.getElementById('mobileCardView');
+    if (!positions || positions.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">暂无持仓数据</div>';
+        return;
+    }
+    container.innerHTML = positions.map(pos => {
+        const profitRatioClass = pos['盈亏比(%)'] > 0 ? 'profit-positive' : pos['盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
+        const todayProfitClass = pos['当日盈亏比(%)'] > 0 ? 'profit-positive' : pos['当日盈亏比(%)'] < 0 ? 'profit-negative' : 'profit-zero';
+        return `
+            <div class="mobile-stock-card">
+                <div class="mobile-stock-header">
+                    <div>
+                        <div class="mobile-stock-code">${pos['证券代码'] || ''}</div>
+                        <div class="mobile-stock-name">${pos['证券名称'] || ''}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="${profitRatioClass}">${pos['盈亏比(%)'] ?? ''}%</div>
+                        <div class="text-gray-500 text-sm">总盈亏</div>
+                    </div>
+                </div>
+                <div class="mobile-stock-details">
+                    <div class="mobile-detail-item">
+                        <span class="mobile-detail-label">成本价:</span>
+                        <span class="mobile-detail-value">¥${pos['成本价'] ?? ''}</span>
+                    </div>
+                    <div class="mobile-detail-item">
+                        <span class="mobile-detail-label">当前价:</span>
+                        <span class="mobile-detail-value">¥${pos['市价'] ?? ''}</span>
+                    </div>
+                    <div class="mobile-detail-item">
+                        <span class="mobile-detail-label">当日盈亏:</span>
+                        <span class="mobile-detail-value ${todayProfitClass}">${pos['当日盈亏比(%)'] ?? ''}%</span>
+                    </div>
+                    <div class="mobile-detail-item">
+                        <span class="mobile-detail-label">持股天数:</span>
+                        <span class="mobile-detail-value">${pos['持股天数'] ?? ''}天</span>
+                    </div>
+                    <div class="mobile-detail-item">
+                        <span class="mobile-detail-label">仓位占比:</span>
+                        <span class="mobile-detail-value">${pos['仓位占比(%)'] ?? ''}%</span>
+                    </div>
+                </div>
+            </div>
         `;
     }).join('');
 }
@@ -171,12 +435,72 @@ function renderAccountSummary(summary) {
         el.innerHTML = '';
         return;
     }
-    el.innerHTML = `
-        <div class="alert alert-info p-2 mb-2">
-            <strong>账户资金信息：</strong>
-            ${Object.entries(summary).map(([k, v]) => `<span class="me-3">${k}: <b>${v}</b></span>`).join('')}
+    
+    // 计算当日收益和当日收益百分比
+    const totalDailyProfit = positionsData.reduce((sum, pos) => sum + (pos['当日盈亏'] || 0), 0);
+    const totalDailyProfitPercent = summary['总资产'] ? (totalDailyProfit / summary['总资产'] * 100) : 0;
+    
+    // 桌面端显示
+    const desktopHtml = `
+        <div class="hidden md:block bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <strong class="text-blue-800">账户资金信息：</strong>
+            ${Object.entries(summary).map(([k, v]) => `<span class="mr-3 text-blue-700">${k}: <b>${v}</b></span>`).join('')}
+            <span class="mr-3 text-blue-700">当日收益: <b class="${totalDailyProfit >= 0 ? 'text-green-600' : 'text-red-600'}">${totalDailyProfit.toFixed(2)}</b></span>
+            <span class="mr-3 text-blue-700">当日收益%: <b class="${totalDailyProfitPercent >= 0 ? 'text-green-600' : 'text-red-600'}">${totalDailyProfitPercent.toFixed(2)}%</b></span>
+            总仓位占比：<b class="text-blue-800">${(summary['股票市值']*100/summary['总资产']).toFixed(2)}%</b>
         </div>
     `;
+    
+    // 移动端显示
+    const mobileHtml = `
+        <div class="mobile-account-summary md:hidden">
+            <div class="mobile-account-title">账户资金信息</div>
+            <div class="mobile-account-items">
+                ${Object.entries(summary).map(([k, v]) => `
+                    <div class="mobile-account-item">
+                        <span class="mobile-account-label">${k}</span>
+                        <span class="mobile-account-value">${v}</span>
+                    </div>
+                `).join('')}
+                <div class="mobile-account-item ${totalDailyProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+                    <span class="mobile-account-label">当日收益</span>
+                    <span class="mobile-account-value ${totalDailyProfit >= 0 ? 'text-green-600' : 'text-red-600'}">${totalDailyProfit.toFixed(2)}</span>
+                </div>
+                <div class="mobile-account-item ${totalDailyProfitPercent >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+                    <span class="mobile-account-label">当日收益%</span>
+                    <span class="mobile-account-value ${totalDailyProfitPercent >= 0 ? 'text-green-600' : 'text-red-600'}">${totalDailyProfitPercent.toFixed(2)}%</span>
+                </div>
+                <div class="mobile-account-item mobile-position-ratio">
+                    <span class="mobile-account-label">总仓位占比</span>
+                    <span class="mobile-account-value">${(summary['股票市值']*100/summary['总资产']).toFixed(2)}%</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    el.innerHTML = desktopHtml + mobileHtml;
+}
+
+function switchView(view) {
+    currentView = view;
+    const tableView = document.getElementById('mobileTable');
+    const cardView = document.getElementById('mobileCardView');
+    const buttons = document.querySelectorAll('.view-toggle .btn');
+    
+    buttons.forEach(btn => {
+        btn.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'text-white');
+        btn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'text-gray-700');
+    });
+    event.target.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'text-gray-700');
+    event.target.classList.add('bg-blue-500', 'hover:bg-blue-600', 'text-white');
+    
+    if (view === 'table') {
+        tableView.style.display = 'block';
+        cardView.style.display = 'none';
+    } else {
+        tableView.style.display = 'none';
+        cardView.style.display = 'block';
+    }
 }
 
 function bindSortEvents() {
@@ -208,6 +532,8 @@ function sortTable(field, direction) {
         }
     });
     renderTable(positionsData);
+    renderMobileTable(positionsData);
+    renderMobileCards(positionsData);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
