@@ -589,11 +589,17 @@ function renderHistoryAccountSummary(summary) {
         return;
     }
     
+    // 计算当日收益和当日收益百分比
+    const totalDailyProfit = historyPositionsData.reduce((sum, pos) => sum + (pos['当日盈亏'] || 0), 0);
+    const totalDailyProfitPercent = summary['总资产'] ? (totalDailyProfit / summary['总资产'] * 100) : 0;
+    
     // 桌面端显示
     const desktopHtml = `
         <div class="hidden md:block bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <strong class="text-blue-800">账户资金信息：</strong>
             ${Object.entries(summary).map(([k, v]) => `<span class="mr-3 text-blue-700">${k}: <b>${v}</b></span>`).join('')}
+            <span class="mr-3 text-blue-700">当日收益: <b class="${totalDailyProfit >= 0 ? 'text-green-600' : 'text-red-600'}">${totalDailyProfit.toFixed(2)}</b></span>
+            <span class="mr-3 text-blue-700">当日收益%: <b class="${totalDailyProfitPercent >= 0 ? 'text-green-600' : 'text-red-600'}">${totalDailyProfitPercent.toFixed(2)}%</b></span>
         </div>
     `;
     
@@ -608,6 +614,14 @@ function renderHistoryAccountSummary(summary) {
                         <span class="mobile-account-value">${v}</span>
                     </div>
                 `).join('')}
+                <div class="mobile-account-item ${totalDailyProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+                    <span class="mobile-account-label">当日收益</span>
+                    <span class="mobile-account-value ${totalDailyProfit >= 0 ? 'text-green-600' : 'text-red-600'}">${totalDailyProfit.toFixed(2)}</span>
+                </div>
+                <div class="mobile-account-item ${totalDailyProfitPercent >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+                    <span class="mobile-account-label">当日收益%</span>
+                    <span class="mobile-account-value ${totalDailyProfitPercent >= 0 ? 'text-green-600' : 'text-red-600'}">${totalDailyProfitPercent.toFixed(2)}%</span>
+                </div>
             </div>
         </div>
     `;
